@@ -1,0 +1,9 @@
+*.DS_Store*
+dude*
+persistit_journal*
+bin
+target
+.classpath
+.project
+.settings
+test-output
