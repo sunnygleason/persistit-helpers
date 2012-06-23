@@ -29,6 +29,7 @@ import com.g414.persistit.Functional.Mapping;
 import com.g414.persistit.Functional.Pair;
 import com.g414.persistit.Functional.Traversal;
 import com.g414.persistit.Functional.TraversalSpec;
+import com.persistit.Exchange;
 import com.persistit.KeyFilter;
 import com.persistit.KeyFilter.Term;
 
@@ -41,19 +42,11 @@ public class FunctionalMapTest extends FunctionalTestBase {
 	 */
 	public void testIdentityMapping() throws Exception {
 		final AtomicLong counter = new AtomicLong();
-
-		Mapping<String, Integer, Integer> identity = new Mapping<String, Integer, Integer>() {
-			@Override
-			public Integer map(Pair<String, Integer> row) {
-				Assert.assertEquals(row.getKey(), getKey(row.getValue()));
-				counter.getAndIncrement();
-
-				return row.getValue();
-			}
-		};
+		final Exchange exchange = getExchange(db, true);
 
 		Traversal<String, Integer, Integer> traversalAscending = Functional
-				.map(getFullTraversal(db, Direction.ASC), identity);
+				.map(exchange, getFullTraversal(Direction.ASC),
+						getIdentityMapping(counter, true, true));
 
 		while (traversalAscending.hasNext()) {
 			Integer value = traversalAscending.next();
@@ -65,7 +58,8 @@ public class FunctionalMapTest extends FunctionalTestBase {
 		counter.set(0);
 
 		Traversal<String, Integer, Integer> traversalDescending = Functional
-				.map(getFullTraversal(db, Direction.DESC), identity);
+				.map(exchange, getFullTraversal(Direction.DESC),
+						getIdentityMapping(counter, true, true));
 
 		while (traversalDescending.hasNext()) {
 			Integer value = traversalDescending.next();
@@ -83,25 +77,17 @@ public class FunctionalMapTest extends FunctionalTestBase {
 	 */
 	public void testIdentityMappingWithRowFilter() throws Exception {
 		final AtomicLong counter = new AtomicLong();
-
-		Mapping<String, Integer, Integer> identity = new Mapping<String, Integer, Integer>() {
-			@Override
-			public Integer map(Pair<String, Integer> row) {
-				Assert.assertEquals(row.getKey(), getKey(row.getValue()));
-				counter.getAndIncrement();
-
-				return row.getValue();
-			}
-		};
+		final Exchange exchange = getExchange(db, true);
 
 		Traversal<String, Integer, Integer> traversalAscending = Functional
-				.map(getFilteredTraversal(db, Direction.ASC,
-						new Filter<String, Integer>() {
-							@Override
-							public Boolean map(Pair<String, Integer> row) {
-								return row.getValue() % 2 == 0;
-							}
-						}), identity);
+				.map(exchange,
+						getFilteredTraversal(Direction.ASC,
+								new Filter<String, Integer>() {
+									@Override
+									public Boolean map(Pair<String, Integer> row) {
+										return row.getValue() % 2 == 0;
+									}
+								}), getIdentityMapping(counter, true, true));
 
 		while (traversalAscending.hasNext()) {
 			Integer value = traversalAscending.next();
@@ -113,13 +99,14 @@ public class FunctionalMapTest extends FunctionalTestBase {
 		counter.set(0);
 
 		Traversal<String, Integer, Integer> traversalDescending = Functional
-				.map(getFilteredTraversal(db, Direction.DESC,
-						new Filter<String, Integer>() {
-							@Override
-							public Boolean map(Pair<String, Integer> row) {
-								return row.getValue() % 2 == 0;
-							}
-						}), identity);
+				.map(exchange,
+						getFilteredTraversal(Direction.DESC,
+								new Filter<String, Integer>() {
+									@Override
+									public Boolean map(Pair<String, Integer> row) {
+										return row.getValue() % 2 == 0;
+									}
+								}), getIdentityMapping(counter, true, true));
 
 		while (traversalDescending.hasNext()) {
 			Integer value = traversalDescending.next();
@@ -138,23 +125,15 @@ public class FunctionalMapTest extends FunctionalTestBase {
 	 */
 	public void testIdentityMappingWithKeyFilter() throws Exception {
 		final AtomicLong counter = new AtomicLong();
-
-		Mapping<String, Integer, Integer> identity = new Mapping<String, Integer, Integer>() {
-			@Override
-			public Integer map(Pair<String, Integer> row) {
-				Assert.assertEquals(row.getKey(), getKey(row.getValue()));
-				counter.getAndIncrement();
-
-				return row.getValue();
-			}
-		};
+		final Exchange exchange = getExchange(db, true);
 
 		KeyFilter filter100 = new KeyFilter(new Term[] { KeyFilter.rangeTerm(
 				getKey(100), getKey(200), true, false) });
 
 		Traversal<String, Integer, Integer> traversalAscending = Functional
-				.map(new TraversalSpec<String, Integer>(db.getExchange(vol,
-						tree, false), Direction.ASC, filter100, null), identity);
+				.map(exchange, new TraversalSpec<String, Integer>(
+						Direction.ASC, filter100, null),
+						getIdentityMapping(counter, true, true));
 
 		while (traversalAscending.hasNext()) {
 			Integer value = traversalAscending.next();
@@ -170,9 +149,9 @@ public class FunctionalMapTest extends FunctionalTestBase {
 				getKey(300), getKey(400), true, false) });
 
 		Traversal<String, Integer, Integer> traversalDescending = Functional
-				.map(new TraversalSpec<String, Integer>(db.getExchange(vol,
-						tree, false), Direction.DESC, filter300, null),
-						identity);
+				.map(exchange, new TraversalSpec<String, Integer>(
+						Direction.DESC, filter300, null),
+						getIdentityMapping(counter, true, true));
 
 		while (traversalDescending.hasNext()) {
 			Integer value = traversalDescending.next();
@@ -188,9 +167,10 @@ public class FunctionalMapTest extends FunctionalTestBase {
 	 */
 	public void testMapIntegersToStrings() throws Exception {
 		final AtomicLong counter = new AtomicLong();
+		final Exchange exchange = getExchange(db, true);
 
 		Traversal<String, Integer, String> traversalAscending = Functional.map(
-				getFullTraversal(db, Direction.ASC),
+				exchange, getFullTraversal(Direction.ASC),
 				new Mapping<String, Integer, String>() {
 					@Override
 					public String map(Pair<String, Integer> row) {

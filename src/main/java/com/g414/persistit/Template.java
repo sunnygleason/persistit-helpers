@@ -33,6 +33,10 @@ public class Template<K, V> {
 		public T inTransaction(Transaction txn);
 	}
 
+	public interface ExchangeCallback<T> {
+		public T run();
+	}
+
 	public <T> T inTransaction(Persistit database,
 			TransactionCallback<T> callback) throws Exception {
 		Transaction txn = null;
@@ -44,6 +48,7 @@ public class Template<K, V> {
 		} catch (Exception e) {
 			if (txn != null) {
 				txn.rollback();
+				txn.end();
 				txn = null;
 			}
 
@@ -51,10 +56,19 @@ public class Template<K, V> {
 		} finally {
 			if (txn != null) {
 				txn.commit();
+				txn.end();
 				txn = null;
 			}
 		}
+	}
 
+	public <T> T withExchange(Persistit database, Exchange exchange,
+			ExchangeCallback<T> callback) throws Exception {
+		try {
+			return callback.run();
+		} finally {
+			database.releaseExchange(exchange);
+		}
 	}
 
 	public Pair<K, V> load(Exchange exchange, K key) {
@@ -71,8 +85,6 @@ public class Template<K, V> {
 					(V) exchange.getValue().get());
 		} catch (PersistitException e) {
 			throw new RuntimeException(e);
-		} finally {
-			exchange.reset();
 		}
 	}
 
@@ -94,8 +106,7 @@ public class Template<K, V> {
 
 	public boolean insertOrUpdate(Exchange exchange, K key, V value) {
 		try {
-			exchange.clear();
-			exchange.getKey().append(key);
+			exchange.getKey().to(key);
 			exchange.getValue().put(value);
 			exchange.store();
 
@@ -111,8 +122,9 @@ public class Template<K, V> {
 		}
 
 		try {
-			exchange.getKey().append(key);
-			return exchange.remove();
+			exchange.getKey().to(key);
+
+			return exchange.fetchAndRemove();
 		} catch (PersistitException e) {
 			throw new RuntimeException(e);
 		}
@@ -121,7 +133,7 @@ public class Template<K, V> {
 	public boolean recordExists(Exchange exchange, K key) {
 		try {
 			exchange.clear();
-			exchange.getKey().append(key);
+			exchange.getKey().to(key);
 
 			return exchange.isValueDefined();
 		} catch (PersistitException e) {

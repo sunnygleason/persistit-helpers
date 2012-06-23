@@ -28,6 +28,7 @@ import com.g414.persistit.Functional.Filter;
 import com.g414.persistit.Functional.Pair;
 import com.g414.persistit.Functional.Reduction;
 import com.g414.persistit.Functional.TraversalSpec;
+import com.persistit.Exchange;
 import com.persistit.KeyFilter;
 import com.persistit.KeyFilter.Term;
 
@@ -40,6 +41,7 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 	 */
 	public void testSummationReduction() throws Exception {
 		final AtomicLong counter = new AtomicLong();
+		final Exchange exchange = getExchange(db, true);
 
 		Reduction<String, Integer, Integer> summation = new Reduction<String, Integer, Integer>() {
 			@Override
@@ -51,15 +53,16 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 			}
 		};
 
-		int ascendingSum = Functional.reduce(
-				getFullTraversal(db, Direction.ASC), summation, 0);
+		int ascendingSum = Functional.reduce(exchange,
+				getFullTraversal(Direction.ASC), summation, 0);
 		Assert.assertEquals(ascendingSum, 499500);
 		Assert.assertEquals(counter.get(), 1000);
 
 		counter.set(0);
 
-		int descendingSum = Functional.reduce(
-				getFullTraversal(db, Direction.DESC), summation, 0);
+		int descendingSum = Functional.reduce(exchange,
+				getFullTraversal(Direction.DESC), summation, 0);
+
 		Assert.assertEquals(descendingSum, 499500);
 		Assert.assertEquals(counter.get(), 1000);
 	}
@@ -72,6 +75,7 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 	 */
 	public void testSummationReductionWithRowFilter() throws Exception {
 		final AtomicLong counter = new AtomicLong();
+		final Exchange exchange = getExchange(db, true);
 
 		Reduction<String, Integer, Integer> summation = new Reduction<String, Integer, Integer>() {
 			@Override
@@ -84,7 +88,8 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 		};
 
 		int ascendingSum = Functional.reduce(
-				getFilteredTraversal(db, Direction.ASC,
+				exchange,
+				getFilteredTraversal(Direction.ASC,
 						new Filter<String, Integer>() {
 							@Override
 							public Boolean map(Pair<String, Integer> row) {
@@ -97,7 +102,8 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 		counter.set(0);
 
 		int descendingSum = Functional.reduce(
-				getFilteredTraversal(db, Direction.DESC,
+				exchange,
+				getFilteredTraversal(Direction.DESC,
 						new Filter<String, Integer>() {
 							@Override
 							public Boolean map(Pair<String, Integer> row) {
@@ -115,6 +121,7 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 	 */
 	public void testSummationReductionWithKeyFilter() throws Exception {
 		final AtomicLong counter = new AtomicLong();
+		final Exchange exchange = getExchange(db, true);
 
 		Reduction<String, Integer, Integer> summation = new Reduction<String, Integer, Integer>() {
 			@Override
@@ -129,9 +136,9 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 		KeyFilter filter100 = new KeyFilter(new Term[] { KeyFilter.rangeTerm(
 				getKey(100), getKey(200), true, false) });
 
-		int ascendingSum = Functional.reduce(
-				new TraversalSpec<String, Integer>(db.getExchange(vol, tree,
-						false), Direction.ASC, filter100, null), summation, 0);
+		int ascendingSum = Functional.reduce(exchange,
+				new TraversalSpec<String, Integer>(Direction.ASC, filter100,
+						null), summation, 0);
 
 		Assert.assertEquals(ascendingSum, 14950);
 		Assert.assertEquals(counter.get(), 100);
@@ -141,9 +148,9 @@ public class FunctionalReductionTest extends FunctionalTestBase {
 		KeyFilter filter300 = new KeyFilter(new Term[] { KeyFilter.rangeTerm(
 				getKey(300), getKey(400), true, false) });
 
-		int descendingSum = Functional.reduce(
-				new TraversalSpec<String, Integer>(db.getExchange(vol, tree,
-						false), Direction.DESC, filter300, null), summation, 0);
+		int descendingSum = Functional.reduce(exchange,
+				new TraversalSpec<String, Integer>(Direction.DESC, filter300,
+						null), summation, 0);
 		Assert.assertEquals(descendingSum, 34950);
 		Assert.assertEquals(counter.get(), 100);
 	}

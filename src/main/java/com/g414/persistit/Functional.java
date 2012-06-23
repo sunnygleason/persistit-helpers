@@ -96,26 +96,20 @@ public class Functional {
 	}
 
 	/**
-	 * Specifies a Traversal, including the target Exchange, cursor Direction
-	 * (ascending or descending), nullable KeyFilter as a primary bounding
-	 * filter, and nullable secondary filter for row-specific filtering.
+	 * Specifies a Traversal, including the cursor Direction (ascending or
+	 * descending), nullable KeyFilter as a primary bounding filter, and
+	 * nullable secondary filter for row-specific filtering.
 	 */
 	public static class TraversalSpec<K, V> {
-		private final Exchange target;
 		private final Direction direction;
 		private final KeyFilter primaryFilter;
 		private final Filter<K, V> filter;
 
-		public TraversalSpec(Exchange target, Direction direction,
-				KeyFilter primaryFilter, Filter<K, V> filter) {
-			this.target = target;
+		public TraversalSpec(Direction direction, KeyFilter primaryFilter,
+				Filter<K, V> filter) {
 			this.direction = direction;
 			this.primaryFilter = primaryFilter;
 			this.filter = filter;
-		}
-
-		public Exchange getExchange() {
-			return target;
 		}
 
 		public Direction getDirection() {
@@ -136,9 +130,9 @@ public class Functional {
 	 * TraversalSpec. (Other methods in this class typically return the
 	 * traversal)
 	 */
-	public static <K, V, T> void foreach(
+	public static <K, V, T> void foreach(final Exchange exchange,
 			final TraversalSpec<K, V> traversalSpec, final Mapping<K, V, T> r) {
-		map(traversalSpec, r).traverseAll();
+		map(exchange, traversalSpec, r).traverseAll();
 	}
 
 	/**
@@ -146,10 +140,10 @@ public class Functional {
 	 * pair in the specified set, the mapping will be executed and the Traversal
 	 * will return a value of type T.
 	 */
-	public static <K, V, T> Traversal<K, V, T> map(
+	public static <K, V, T> Traversal<K, V, T> map(Exchange exchange,
 			final TraversalSpec<K, V> traversalSpec,
 			final Mapping<K, V, T> mapping) {
-		return new TraversalImpl<K, V, T>(traversalSpec, mapping);
+		return new TraversalImpl<K, V, T>(exchange, traversalSpec, mapping);
 	}
 
 	/**
@@ -158,10 +152,11 @@ public class Functional {
 	 * over the key, value and so-far accumulated value, finally returning the
 	 * accumulated value of type T.
 	 */
-	public static <K, V, T> T reduce(final TraversalSpec<K, V> traversalSpec,
+	public static <K, V, T> T reduce(final Exchange exchange,
+			final TraversalSpec<K, V> traversalSpec,
 			final Reduction<K, V, T> reduction, final T initial) {
 		MapReduction<K, V, T> mr = new MapReduction<K, V, T>(initial, reduction);
-		Traversal<K, V, T> iter = map(traversalSpec, mr);
+		Traversal<K, V, T> iter = map(exchange, traversalSpec, mr);
 
 		while (iter.hasNext()) {
 			iter.next();
@@ -177,14 +172,16 @@ public class Functional {
 	 * the mutations will not be applied.
 	 */
 	public static <K, V> Traversal<K, V, Mutation<K, V>> apply(
-			final Template<K, V> dbt, final TraversalSpec<K, V> traversalSpec,
-			final Mapping<K, V, Mutation<K, V>> mutation) {
-
+			final Exchange source, final Template<K, V> dbt,
+			final TraversalSpec<K, V> traversalSpec,
+			final Mapping<K, V, Mutation<K, V>> mutation, final Exchange target) {
 		final Mapping<K, V, Mutation<K, V>> mapping = new Mapping<K, V, Mutation<K, V>>() {
 			@Override
 			public Mutation<K, V> map(Pair<K, V> row) {
 				Mutation<K, V> m = mutation.map(row);
-				Exchange target = traversalSpec.getExchange();
+				if (m == null) {
+					m = new Mutation<K, V>(MutationType.NONE, row);
+				}
 
 				switch (m.getType()) {
 				case NONE:
@@ -204,7 +201,8 @@ public class Functional {
 			}
 		};
 
-		return new TraversalImpl<K, V, Mutation<K, V>>(traversalSpec, mapping);
+		return new TraversalImpl<K, V, Mutation<K, V>>(source, traversalSpec,
+				mapping);
 	}
 
 	/**
@@ -242,9 +240,9 @@ public class Functional {
 		private Exchange exchange;
 		private Pair<K, V> nextItem;
 
-		public TraversalImpl(TraversalSpec<K, V> traversalSpec,
-				Mapping<K, V, T> mapping) {
-			this.exchange = traversalSpec.getExchange();
+		public TraversalImpl(Exchange exchange,
+				TraversalSpec<K, V> traversalSpec, Mapping<K, V, T> mapping) {
+			this.exchange = exchange;
 			this.primaryFilter = traversalSpec.getPrimaryFilter();
 			this.filter = traversalSpec.getFilter();
 			this.mapping = mapping;
@@ -323,7 +321,6 @@ public class Functional {
 			}
 
 			Pair<K, V> orig = nextItem;
-
 			nextItem = advance();
 
 			try {
