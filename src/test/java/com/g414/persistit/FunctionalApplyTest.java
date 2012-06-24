@@ -33,8 +33,6 @@ import com.g414.persistit.Functional.PairImpl;
 import com.g414.persistit.Functional.Traversal;
 import com.g414.persistit.Template.TransactionCallback;
 import com.persistit.Exchange;
-import com.persistit.SessionId;
-import com.persistit.Sessions;
 import com.persistit.Transaction;
 
 @Test
@@ -71,34 +69,16 @@ public class FunctionalApplyTest extends FunctionalTestBase {
 			}
 		};
 
-		final SessionId reader = Sessions.getSessionId();
-		final SessionId writer = Sessions.getSessionId();
-
-		db.setSessionId(reader);
 		final Exchange source = getExchange(db, true);
+		final Exchange target = getExchange(db, true);
 
 		template.inTransaction(db, new TransactionCallback<Void>() {
 			@Override
 			public Void inTransaction(Transaction txn) {
-				try {
-					db.setSessionId(writer);
-					final Exchange target = getExchange(db, true);
+				Functional.apply(source, template, incrementMutation, target)
+						.traverseAll();
 
-					template.inTransaction(db, new TransactionCallback<Void>() {
-						@Override
-						public Void inTransaction(Transaction txn2) {
-							Functional.apply(source, template,
-									getFullTraversal(Direction.ASC),
-									incrementMutation, target).traverseAll();
-
-							return null;
-						}
-					});
-
-					return null;
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return null;
 			}
 		});
 
@@ -148,36 +128,16 @@ public class FunctionalApplyTest extends FunctionalTestBase {
 			}
 		};
 
-		final SessionId reader = Sessions.getSessionId();
-		final SessionId writer = Sessions.getSessionId();
-
-		db.setSessionId(reader);
 		final Exchange source = getExchange(db, true);
+		final Exchange target = getExchange(db, true);
 
 		template.inTransaction(db, new TransactionCallback<Void>() {
 			@Override
 			public Void inTransaction(Transaction txn) {
-				try {
-					db.setSessionId(writer);
-					final Exchange target = getExchange(db, true);
+				Functional.apply(source, template, decrementMutation, target)
+						.traverseAll();
 
-					template.inTransaction(db, new TransactionCallback<Void>() {
-						@Override
-						public Void inTransaction(
-
-						Transaction txn2) {
-							Functional.apply(source, template,
-									getFullTraversal(Direction.ASC),
-									decrementMutation, target).traverseAll();
-
-							return null;
-						}
-					});
-
-					return null;
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return null;
 			}
 		});
 
@@ -231,36 +191,17 @@ public class FunctionalApplyTest extends FunctionalTestBase {
 			}
 		};
 
-		final SessionId reader = Sessions.getSessionId();
-		final SessionId writer = Sessions.getSessionId();
-
-		db.setSessionId(reader);
 		final Exchange source = getExchange(db, true);
+		final Exchange target = getExchange(db, true);
 
 		template.inTransaction(db, new TransactionCallback<Void>() {
 			@Override
 			public Void inTransaction(Transaction txn) {
-				try {
-					db.setSessionId(writer);
-					final Exchange target = getExchange(db, true);
+				Functional
+						.apply(source, template, insertNewRowPlus1000, target)
+						.traverseAll();
 
-					template.inTransaction(db, new TransactionCallback<Void>() {
-						@Override
-						public Void inTransaction(
-
-						Transaction txn2) {
-							Functional.apply(source, template,
-									getFullTraversal(Direction.ASC),
-									insertNewRowPlus1000, target).traverseAll();
-
-							return null;
-						}
-					});
-
-					return null;
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return null;
 			}
 		});
 
@@ -311,48 +252,24 @@ public class FunctionalApplyTest extends FunctionalTestBase {
 			}
 		};
 
-		final SessionId reader = Sessions.getSessionId();
-		final SessionId writer = Sessions.getSessionId();
-
-		db.setSessionId(reader);
 		final Exchange source = getExchange(db, true);
+		final Exchange target = getExchange(db, true);
 
 		template.inTransaction(db, new TransactionCallback<Void>() {
 			@Override
 			public Void inTransaction(Transaction txn) {
-				try {
-					db.setSessionId(writer);
-					final Exchange target = getExchange(db, true);
+				Functional.apply(
+						source,
+						template,
+						getFilteredTraversal(Direction.ASC,
+								new Filter<String, Integer>() {
+									@Override
+									public Boolean map(Pair<String, Integer> row) {
+										return row.getValue() < 1000;
+									}
+								}), insertNewRowPlus1000, target).traverseAll();
 
-					template.inTransaction(db, new TransactionCallback<Void>() {
-						@Override
-						public Void inTransaction(
-
-						Transaction txn2) {
-							Functional
-									.apply(source,
-											template,
-											getFilteredTraversal(
-													Direction.ASC,
-													new Filter<String, Integer>() {
-														@Override
-														public Boolean map(
-																Pair<String, Integer> row) {
-															return row
-																	.getValue() < 1000;
-														}
-													}), insertNewRowPlus1000,
-											target)
-									.traverseAll();
-
-							return null;
-						}
-					});
-
-					return null;
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return null;
 			}
 		});
 
@@ -403,34 +320,16 @@ public class FunctionalApplyTest extends FunctionalTestBase {
 			}
 		};
 
-		final SessionId reader = Sessions.getSessionId();
-		final SessionId writer = Sessions.getSessionId();
-
-		db.setSessionId(reader);
 		final Exchange source = getExchange(db, true);
+		final Exchange target = getExchange(db, true);
 
 		template.inTransaction(db, new TransactionCallback<Void>() {
 			@Override
 			public Void inTransaction(Transaction txn) {
-				try {
-					db.setSessionId(writer);
-					final Exchange target = getExchange(db, true);
+				Functional.apply(source, template, deletionMutation, target)
+						.traverseAll();
 
-					template.inTransaction(db, new TransactionCallback<Void>() {
-						@Override
-						public Void inTransaction(Transaction txn2) {
-							Functional.apply(source, template,
-									getFullTraversal(Direction.ASC),
-									deletionMutation, target).traverseAll();
-
-							return null;
-						}
-					});
-
-					return null;
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return null;
 			}
 		});
 

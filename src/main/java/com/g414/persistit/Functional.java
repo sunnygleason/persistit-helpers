@@ -226,6 +226,9 @@ public class Functional {
 			final TraversalSpec<K, V> traversalSpec,
 			final Mapping<K, V, Mutation<K, V>> mutation, final Exchange target) {
 		final Mapping<K, V, Mutation<K, V>> mapping = new Mapping<K, V, Mutation<K, V>>() {
+			final int sourceStep = source.getTransaction().getStep();
+			final int targetStep = sourceStep + 1;
+
 			@Override
 			public Mutation<K, V> map(Pair<K, V> row) {
 				Mutation<K, V> m = mutation.map(row);
@@ -233,21 +236,27 @@ public class Functional {
 					m = new Mutation<K, V>(MutationType.NONE, row);
 				}
 
-				switch (m.getType()) {
-				case NONE:
-					break;
-				case INSERT_OR_UPDATE:
-					dbt.insertOrUpdate(target, m.getInstance().getKey(), m
-							.getInstance().getValue());
-					break;
-				case DELETE:
-					dbt.delete(target, m.getInstance().getKey());
-					break;
-				default:
-					throw new IllegalArgumentException();
-				}
+				try {
+					target.getTransaction().setStep(targetStep);
 
-				return m;
+					switch (m.getType()) {
+					case NONE:
+						break;
+					case INSERT_OR_UPDATE:
+						dbt.insertOrUpdate(target, m.getInstance().getKey(), m
+								.getInstance().getValue());
+						break;
+					case DELETE:
+						dbt.delete(target, m.getInstance().getKey());
+						break;
+					default:
+						throw new IllegalArgumentException();
+					}
+
+					return m;
+				} finally {
+					source.getTransaction().setStep(sourceStep);
+				}
 			}
 		};
 
