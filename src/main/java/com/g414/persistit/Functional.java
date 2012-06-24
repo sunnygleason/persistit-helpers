@@ -105,6 +105,14 @@ public class Functional {
 		private final KeyFilter primaryFilter;
 		private final Filter<K, V> filter;
 
+		public TraversalSpec() {
+			this(Direction.ASC, null, null);
+		}
+
+		public TraversalSpec(Direction direction) {
+			this(direction, null, null);
+		}
+
 		public TraversalSpec(Direction direction, KeyFilter primaryFilter,
 				Filter<K, V> filter) {
 			this.direction = direction;
@@ -126,6 +134,15 @@ public class Functional {
 	}
 
 	/**
+	 * Immediately executes the given mapping for each row in the K/V space.
+	 * (Other methods in this class typically return the traversal)
+	 */
+	public static <K, V, T> void foreach(final Exchange exchange,
+			final Mapping<K, V, T> r) {
+		map(exchange, null, r).traverseAll();
+	}
+
+	/**
 	 * Immediately executes the given mapping for each row in the given
 	 * TraversalSpec. (Other methods in this class typically return the
 	 * traversal)
@@ -133,6 +150,16 @@ public class Functional {
 	public static <K, V, T> void foreach(final Exchange exchange,
 			final TraversalSpec<K, V> traversalSpec, final Mapping<K, V, T> r) {
 		map(exchange, traversalSpec, r).traverseAll();
+	}
+
+	/**
+	 * Returns a mapping traversal over the entire K/V space. For each K/V pair,
+	 * the mapping will be executed and the Traversal will return a value of
+	 * type T.
+	 */
+	public static <K, V, T> Traversal<K, V, T> map(Exchange exchange,
+			final Mapping<K, V, T> mapping) {
+		return new TraversalImpl<K, V, T>(exchange, null, mapping);
 	}
 
 	/**
@@ -144,6 +171,17 @@ public class Functional {
 			final TraversalSpec<K, V> traversalSpec,
 			final Mapping<K, V, T> mapping) {
 		return new TraversalImpl<K, V, T>(exchange, traversalSpec, mapping);
+	}
+
+	/**
+	 * Immediately executes a reduction traversal over the full K/V space. For
+	 * each K/V pair in the space, the reduction will be executed over the key,
+	 * value and so-far accumulated value, finally returning the accumulated
+	 * value of type T.
+	 */
+	public static <K, V, T> T reduce(final Exchange exchange,
+			final Reduction<K, V, T> reduction, final T initial) {
+		return reduce(exchange, null, reduction, initial);
 	}
 
 	/**
@@ -163,6 +201,18 @@ public class Functional {
 		}
 
 		return mr.getAccum();
+	}
+
+	/**
+	 * Returns a mutation traversal over the entire K/V space. As the traversal
+	 * iterates, for each K/V pair in the specified set, the mutation will be
+	 * executed over the key and value. If the iterator is not called, the
+	 * mutations will not be applied.
+	 */
+	public static <K, V> Traversal<K, V, Mutation<K, V>> apply(
+			final Exchange source, final Template<K, V> dbt,
+			final Mapping<K, V, Mutation<K, V>> mutation, final Exchange target) {
+		return apply(source, dbt, null, mutation, target);
 	}
 
 	/**
@@ -242,6 +292,10 @@ public class Functional {
 
 		public TraversalImpl(Exchange exchange,
 				TraversalSpec<K, V> traversalSpec, Mapping<K, V, T> mapping) {
+			if (traversalSpec == null) {
+				traversalSpec = new TraversalSpec<K, V>();
+			}
+
 			this.exchange = exchange;
 			this.primaryFilter = traversalSpec.getPrimaryFilter();
 			this.filter = traversalSpec.getFilter();
