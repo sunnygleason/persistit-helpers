@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.g414.persistit</groupId>
   <artifactId>persistit-helpers</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1-SNAPSHOT</version>
 
   <scm>
     <connection>scm:git:git@github.com:sunnygleason/persistit-helpers.git</connection>
